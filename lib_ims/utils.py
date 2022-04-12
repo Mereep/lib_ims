@@ -40,10 +40,15 @@ def get_ims_logger() -> logging.Logger:
 def download_db(version: str = 'latest', target_path: Path | None = None):
     """ will download the IMS data and unpack it. This will take a while
     :param version: the ims database version to be loaded. See `get_ims_versions` to see the options.
-    :param target_path: if given, the data will be extracted there if not './ims_data' will be used
+    :param target_path: if given, the data will be extracted there if not '../ims_data' will be used
     By default 'latest' will be chosen
+
+    Warning: if on jupyter notebooks (or other `inside-async` environments) import `nest_asyncio` or you likely will
+    be facing a runtime error
+
+    @see https://pypi.org/project/nest-asyncio/
     """
-    target_path = target_path or BASE_PATH / 'ims_data'
+    target_path = target_path or BASE_PATH / '../ims_data'
     assert target_path.is_dir(), f"Please provide a valid directory; got `{target_path!s}` (Code: 3482390)"
     assert version in IMS_DATASET_META, "Dataset version is not known. See `get_ims_versions()` for more info " \
                                         "(Code: 439282)"
@@ -54,11 +59,15 @@ def download_db(version: str = 'latest', target_path: Path | None = None):
     get_ims_logger().info(f"The dataset is under separate "
                           f"licensing: `{version['licence_notice']}` (Code: 3482930)")
 
+    # if we crash here make sure to import `nest_asnycio`
+    # @see https://pypi.org/project/nest-asyncio/
     loop = asyncio.get_event_loop()
     task = _async_get_url(version['url'])
     res, = loop.run_until_complete(
         asyncio.gather(task)
     )
+
+
     zip_file_data = BytesIO(res)
     if not zipfile.is_zipfile(zip_file_data):
         raise ImsException(f"Download of {version} did not return a valid zip file (Code: 9382930)")
