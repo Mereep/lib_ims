@@ -1,6 +1,7 @@
 import datetime
 import json
 from pathlib import Path
+from typing import Any, Optional
 
 import pandas as pd
 
@@ -51,9 +52,26 @@ class ImsFile:
 
     @property
     def is_with_ai_players(self) -> bool:
-        """ checks if there was more than one player on the race"""
+        """ checks if there was more than one player on the race """
         return self.n_players > 1
 
     @property
     def telemetry(self) -> pd.DataFrame:
+        """ telemetry data (driver over time) """
         return pd.read_csv(self.path_telemetry)
+
+    @property
+    def extra_info(self) -> dict[str, Any]:
+        """ information related to the session, which may vary on context """
+        return self.static_data['extra_info']
+
+    @property
+    def global_session_number(self) -> Optional[int]:
+        """ ascending recording session number of the specific user (might be context-related) """
+        if 'session_number_global' in self.extra_info:
+            return self.extra_info['session_number_global']
+
+        return None
+
+    def __str__(self):
+        return f"Recording of player {self.player_id} at {self.start_time} on simulator {self.simulator_id}"

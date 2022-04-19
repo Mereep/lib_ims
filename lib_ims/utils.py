@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import os
 import logging
+import tempfile
+from asyncio import Task
 from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO
@@ -10,21 +12,24 @@ from typing import BinaryIO
 import aiohttp
 import zipfile
 
+from aiohttp import ClientTimeout
+
 from lib_ims.exceptions import ImsException
 
 BASE_PATH = Path(os.path.dirname(__file__))
 
 """databases index. Underscored entries are excluded from public interface"""
 IMS_DATASET_META = {
-    'latest': {
-        'description': 'Latest version of IMS Dataset',
-        'url': 'https://micloud.hs-mittweida.de/index.php/s/zRe5G4nS7rBGJxq/download/dev_test_small.zip',
-        'licence_notice': 'Please take not of the included licence in the licence.txt file.'
+    'ims_racing_1_paper': {
+        'url': 'https://micloud.hs-mittweida.de/index.php/s/CFdk5cGjFp3Mpba/download/ims_racing1_paper.zip',
+        'description': "Dataset as described in the IMSRacing Publication",
+        'licence_notice': 'Attribution-ShareAlike 4.0 International. Please take note of the included licence.txt'
+                          ' file'
     },
     '_dev_test_small': {
         'description': 'Dev dataset (only contains a subset of data; you shouldn\'t use it',
         'url': 'https://micloud.hs-mittweida.de/index.php/s/zRe5G4nS7rBGJxq/download/dev_test_small.zip',
-        'licence_notice': 'Please take not of the included licence in the licence.txt file.'
+        'licence_notice': 'Please take note of the included licence in the licence.txt file.'
     },
 }
 
@@ -61,21 +66,36 @@ def download_db(version: str = 'latest', target_path: Path | None = None):
 
     # if we crash here make sure to import `nest_asnycio`
     # @see https://pypi.org/project/nest-asyncio/
-    loop = asyncio.get_event_loop()
-    task = _async_get_url(version['url'])
-    res, = loop.run_until_complete(
-        asyncio.gather(task)
-    )
 
+    download_path = target_path / 'download.zip'
+    with open(download_path, 'wb') as f:
+        task = asyncio.create_task(_async_get_url(version['url'], file_handle=f))
+        loop = asyncio.get_event_loop()
+        finished, unfinished = loop.run_until_complete(
+            asyncio.wait([task], timeout=None)
+        )
+        task: Task = [*finished][0]
+        total_bytes = task.result()
+        get_ims_logger().info(f"Finished downloading ({total_bytes} bytes) to {download_path!s} "
+                              f"(Code: 48293048)")
 
-    zip_file_data = BytesIO(res)
-    if not zipfile.is_zipfile(zip_file_data):
-        raise ImsException(f"Download of {version} did not return a valid zip file (Code: 9382930)")
+    try:
+        with open(download_path, 'rb') as f:
+            #data = f.read()
+            #print(len(data), data[:10])
+            if not zipfile.is_zipfile(f):
+                raise ImsException(f"Download of {version} did not return a valid zip file (Code: 9382930)")
 
-    get_ims_logger().info(f"Extracting zip file to `{target_path!s}` (Code: 3924890234)")
-    file = zipfile.ZipFile(zip_file_data)
-    file.extractall(target_path)
-    get_ims_logger().info(f"Extracting to `{target_path!s}` was successful (Code: 923849203)")
+            get_ims_logger().info(f"Extracting zip file to `{target_path!s}` (Code: 3924890234)")
+            file = zipfile.ZipFile(f)
+            file.extractall(target_path)
+            get_ims_logger().info(f"Extracting to `{target_path!s}` was successful (Code: 923849203)")
+
+    finally:
+        if download_path.is_file():
+            get_ims_logger().info(f"Trying to delete downloaded file {download_path}")
+            os.remove(download_path)
+            get_ims_logger().info(f"Done")
 
 
 def get_ims_versions() -> list[tuple[str, str, str]]:
@@ -87,16 +107,16 @@ def get_ims_versions() -> list[tuple[str, str, str]]:
                 if not key.startswith('_'))
 
 
-async def _async_get_url(url: str, chunk_size_bytes: int = 1024 * 1024) -> bytes:
+async def _async_get_url(url: str, file_handle: BinaryIO, chunk_size_bytes: int = 1024 * 1024) -> int:
     """
     reads data in chunks and reports progress
+
     :param url:
-    :return:
+    :return: total bytes read
     """
-    data = b''
     currently_downloaded_bytes = 0
     async with aiohttp.ClientSession() as sess:
-        async with sess.get(url) as rsp:
+        async with sess.get(url, timeout=ClientTimeout(total=6000)) as rsp:
             content_length = int(rsp.headers.get('Content-Length'))
             while read_data := await rsp.content.read(chunk_size_bytes):
                 if content_length:
@@ -106,9 +126,11 @@ async def _async_get_url(url: str, chunk_size_bytes: int = 1024 * 1024) -> bytes
                     progress_str = "of unknown size"
 
                 currently_downloaded_bytes += len(read_data)
-                data += read_data
-                get_ims_logger().info(f"Currently Downloaded "
-                                      f"{currently_downloaded_bytes / 1024 / 1024:.2f}MB {progress_str} "
-                                      f"(Code: 4823474)")
+                file_handle.write(read_data)
 
-    return data
+                if (currently_downloaded_bytes % (1024 * 1024 * 5)) == 0:
+                    get_ims_logger().info(f"Currently Downloaded "
+                                          f"{currently_downloaded_bytes / 1024 / 1024:.2f}MB {progress_str} "
+                                          f"(Code: 4823474)")
+
+    return currently_downloaded_bytes

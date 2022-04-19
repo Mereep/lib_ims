@@ -1,2 +1,2 @@
-class ImsException:
+class ImsException(Exception):
     pass
