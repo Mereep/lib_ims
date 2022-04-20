@@ -6,6 +6,6 @@ setup(
    description='Dataset Helper library for the IMS Racing datasets',
    author='Richard Vogel',
    author_email='richard.vogel@gmx.net',
-   packages=['lib_ims'],
+   packages=['lib_ims', 'lib_ims.db'],
    install_requires=['aiohttp', 'pandas'],
 )

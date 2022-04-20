@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from typing import Iterable, Iterator
-from lib_ims.db.ims_file import ImsFile
+from .ims_file import ImsFile
 
 
 class ImsDatabase(Iterable):
