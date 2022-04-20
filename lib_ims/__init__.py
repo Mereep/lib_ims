@@ -10,9 +10,9 @@ You should have received a copy of the GNU General Public License along with
 this program. If not, see <http://www.gnu.org/licenses/>.
 """
 
-from lib_ims.db.ims_db import ImsDatabase
-from lib_ims.db.ims_file import ImsFile
-from lib_ims.utils import get_ims_logger, download_db, get_ims_versions
+from .db.ims_db import ImsDatabase
+from .db.ims_file import ImsFile
+from .utils import get_ims_logger, download_db, get_ims_versions
 
 __all__ = [
     'ImsDatabase',
