@@ -26,6 +26,12 @@ IMS_DATASET_META = {
         'licence_notice': 'Attribution-ShareAlike 4.0 International. Please take note of the included licence.txt'
                           ' file'
     },
+    'ims_racing_1_paper_v2': {
+        'url': 'https://micloud.hs-mittweida.de/index.php/s/8dbpBrkDCByjFbq/download/imsracing_paper_v2.zip',
+        'description': "Extended and fixed version of the Dataset as described in the IMSRacing Publication "
+                       "(You likely want to work with this one!)",
+        'licence_notice': 'Attribution-ShareAlike 4.0 International. Please take note of the included licence.txt'
+    },
     '_dev_test_small': {
         'description': 'Dev dataset (only contains a subset of data; you shouldn\'t use it',
         'url': 'https://micloud.hs-mittweida.de/index.php/s/zRe5G4nS7rBGJxq/download/dev_test_small.zip',
